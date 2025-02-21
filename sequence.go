@@ -4,6 +4,8 @@ import (
 	"errors"
 	"unicode/utf8"
 	"strings"
+	"encoding/json"
+	"fmt"
 )
 
 type Sequence struct {
@@ -333,4 +335,47 @@ func (seq *Sequence) Invert(s string) *Sequence {
 	}
 
 	return inverse
+}
+
+func (seq *Sequence) MarshalJSON() ([]byte, error) {
+	var anyOps []interface{}
+	for _, op := range seq.ops {
+		var anyOp interface{}
+		switch val := op.(type) {
+		case Retain:
+			anyOp = val.N
+		case Delete:
+			anyOp = -int(val.N)
+		case Insert:
+			anyOp = val.Str
+		}
+		anyOps = append(anyOps, anyOp)
+	}
+	return json.Marshal(anyOps)
+}
+
+func (seq *Sequence) UnmarshalJSON(data []byte) error {
+	var ops []interface{}
+	if err := json.Unmarshal(data, &ops); err != nil {
+		return err
+	}
+	for _, op := range ops {
+		switch val := op.(type) {
+		case int:
+			if val > 0 {
+				seq.Retain(uint64(val))
+			}
+			seq.Delete(uint64(-val))
+		case float64:
+			if val > 0 {
+				seq.Retain(uint64(val))
+			}
+			seq.Delete(uint64(-val))
+		case string:
+			seq.Insert(val)
+		default:
+			return fmt.Errorf("invalid operation type: %T", val)
+		}
+	}
+	return nil
 }
