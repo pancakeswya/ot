@@ -17,7 +17,7 @@ func genString(length int) string {
 func genSequence(s string) *Sequence {
 	op := NewSequence()
 	for {
-		left := utf8.RuneCountInString(s) - op.baseLen
+		left := utf8.RuneCountInString(s) - op.BaseLen
 		if left == 0 {
 			break
 		}

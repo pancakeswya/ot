@@ -9,9 +9,9 @@ import (
 )
 
 type Sequence struct {
-	ops       []Operation
-	baseLen   int
-	targetLen int
+	Ops       []Operation
+	BaseLen   int
+	TargetLen int
 }
 
 var ErrIncompatibleLengths = errors.New("incompatible lengths")
@@ -24,16 +24,16 @@ func (seq *Sequence) Delete(n uint64) {
 	if n == 0 {
 		return
 	}
-	seq.baseLen += int(n)
+	seq.BaseLen += int(n)
 
-	if len(seq.ops) > 0 {
-		lastIdx := len(seq.ops) - 1
-		if last, ok := seq.ops[lastIdx].(Delete); ok {
-			seq.ops[lastIdx] = Delete{N: last.N + n}
+	if len(seq.Ops) > 0 {
+		lastIdx := len(seq.Ops) - 1
+		if last, ok := seq.Ops[lastIdx].(Delete); ok {
+			seq.Ops[lastIdx] = Delete{N: last.N + n}
 			return
 		}
 	}
-	seq.ops = append(seq.ops, Delete{N: n})
+	seq.Ops = append(seq.Ops, Delete{N: n})
 }
 
 func (seq *Sequence) Insert(s string) {
@@ -41,49 +41,49 @@ func (seq *Sequence) Insert(s string) {
 	if n == 0 {
 		return
 	}
-	seq.targetLen += n
+	seq.TargetLen += n
 
-	if len(seq.ops) > 0 {
-		lastIdx := len(seq.ops) - 1
-		switch lastOp := seq.ops[lastIdx].(type) {
+	if len(seq.Ops) > 0 {
+		lastIdx := len(seq.Ops) - 1
+		switch lastOp := seq.Ops[lastIdx].(type) {
 		case Insert:
-			seq.ops[lastIdx] = Insert{Str: lastOp.Str + s}
+			seq.Ops[lastIdx] = Insert{Str: lastOp.Str + s}
 			return
 		case Delete:
-			if len(seq.ops) >= 2 {
+			if len(seq.Ops) >= 2 {
 				preLastIdx := lastIdx - 1
-				if preLast, ok := seq.ops[preLastIdx].(Insert); ok {
-					seq.ops[preLastIdx] = Insert{Str: preLast.Str + s}
+				if preLast, ok := seq.Ops[preLastIdx].(Insert); ok {
+					seq.Ops[preLastIdx] = Insert{Str: preLast.Str + s}
 					return
 				}
 			}
-			seq.ops[lastIdx] = Insert{Str: s}
-			seq.ops = append(seq.ops, lastOp)
+			seq.Ops[lastIdx] = Insert{Str: s}
+			seq.Ops = append(seq.Ops, lastOp)
 			return
 		}
 	}
-	seq.ops = append(seq.ops, Insert{Str: s})
+	seq.Ops = append(seq.Ops, Insert{Str: s})
 }
 
 func (seq *Sequence) Retain(n uint64) {
 	if n == 0 {
 		return
 	}
-	seq.baseLen += int(n)
-	seq.targetLen += int(n)
+	seq.BaseLen += int(n)
+	seq.TargetLen += int(n)
 
-	if len(seq.ops) > 0 {
-		lastIdx := len(seq.ops) - 1
-		if last, ok := seq.ops[lastIdx].(Retain); ok {
-			seq.ops[lastIdx] = Retain{N: last.N + n}
+	if len(seq.Ops) > 0 {
+		lastIdx := len(seq.Ops) - 1
+		if last, ok := seq.Ops[lastIdx].(Retain); ok {
+			seq.Ops[lastIdx] = Retain{N: last.N + n}
 			return
 		}
 	}
-	seq.ops = append(seq.ops, Retain{N: n})
+	seq.Ops = append(seq.Ops, Retain{N: n})
 }
 
 func (seq *Sequence) Apply(s string) (string, error) {
-	if utf8.RuneCountInString(s) != seq.baseLen {
+	if utf8.RuneCountInString(s) != seq.BaseLen {
 		return "", ErrIncompatibleLengths
 	}
 
@@ -91,7 +91,7 @@ func (seq *Sequence) Apply(s string) (string, error) {
 	chars := []rune(s)
 	pos := 0
 
-	for _, op := range seq.ops {
+	for _, op := range seq.Ops {
 		switch opVal := op.(type) {
 		case Retain:
 			for i := uint64(0); i < opVal.N; i++ {
@@ -109,24 +109,24 @@ func (seq *Sequence) Apply(s string) (string, error) {
 }
 
 func (seq *Sequence) IsNoop() bool {
-	if len(seq.ops) == 0 {
+	if len(seq.Ops) == 0 {
 		return true
 	}
-	if len(seq.ops) == 1 {
-		_, ok := seq.ops[0].(Retain)
+	if len(seq.Ops) == 1 {
+		_, ok := seq.Ops[0].(Retain)
 		return ok
 	}
 	return false
 }
 
 func (seq *Sequence) Compose(other *Sequence) (*Sequence, error) {
-	if seq.targetLen != other.baseLen {
+	if seq.TargetLen != other.BaseLen {
 		return nil, ErrIncompatibleLengths
 	}
 
 	newOp := NewSequence()
-	ops1 := cloneOps(seq.ops)
-	ops2 := cloneOps(other.ops)
+	ops1 := cloneOps(seq.Ops)
+	ops2 := cloneOps(other.Ops)
 	i1, i2 := 0, 0
 
 	for i1 < len(ops1) || i2 < len(ops2) {
@@ -217,15 +217,15 @@ func (seq *Sequence) Compose(other *Sequence) (*Sequence, error) {
 }
 
 func (seq *Sequence) Transform(other *Sequence) (*Sequence, *Sequence, error) {
-	if seq.baseLen != other.baseLen {
+	if seq.BaseLen != other.BaseLen {
 		return nil, nil, ErrIncompatibleLengths
 	}
 
 	aPrime := NewSequence()
 	bPrime := NewSequence()
 
-	ops1 := cloneOps(seq.ops)
-	ops2 := cloneOps(other.ops)
+	ops1 := cloneOps(seq.Ops)
+	ops2 := cloneOps(other.Ops)
 	i1, i2 := 0, 0
 
 	for i1 < len(ops1) || i2 < len(ops2) {
@@ -321,7 +321,7 @@ func (seq *Sequence) Invert(s string) *Sequence {
 	chars := []rune(s)
 	pos := 0
 
-	for _, op := range seq.ops {
+	for _, op := range seq.Ops {
 		switch opVal := op.(type) {
 		case Retain:
 			inverse.Retain(opVal.N)
@@ -339,7 +339,7 @@ func (seq *Sequence) Invert(s string) *Sequence {
 
 func (seq *Sequence) MarshalJSON() ([]byte, error) {
 	var anyOps []interface{}
-	for _, op := range seq.ops {
+	for _, op := range seq.Ops {
 		var anyOp interface{}
 		switch val := op.(type) {
 		case Retain:

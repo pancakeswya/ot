@@ -8,38 +8,38 @@ import (
 
 func TestLengths(t *testing.T) {
 	o := NewSequence()
-	if o.baseLen != 0 {
+	if o.BaseLen != 0 {
 		t.Fatal()
 	}
-	if o.targetLen != 0 {
+	if o.TargetLen != 0 {
 		t.Fatal()
 	}
 	o.Retain(5)
-	if o.baseLen != 5 {
+	if o.BaseLen != 5 {
 		t.Fatal()
 	}
-	if o.targetLen != 5 {
+	if o.TargetLen != 5 {
 		t.Fatal()
 	}
 	o.Insert("abc")
-	if o.baseLen != 5 {
+	if o.BaseLen != 5 {
 		t.Fatal()
 	}
-	if o.targetLen != 8 {
+	if o.TargetLen != 8 {
 		t.Fatal()
 	}
 	o.Retain(2)
-	if o.baseLen != 7 {
+	if o.BaseLen != 7 {
 		t.Fatal()
 	}
-	if o.targetLen != 10 {
+	if o.TargetLen != 10 {
 		t.Fatal()
 	}
 	o.Delete(2)
-	if o.baseLen != 9 {
+	if o.BaseLen != 9 {
 		t.Fatal()
 	}
-	if o.targetLen != 10 {
+	if o.TargetLen != 10 {
 		t.Fatal()
 	}
 }
@@ -52,7 +52,7 @@ func TestSequence(t *testing.T) {
 	o.Insert("")
 	o.Delete(3)
 	o.Delete(0)
-	if len(o.ops) != 3 {
+	if len(o.Ops) != 3 {
 		t.Fatal()
 	}
 }
@@ -66,10 +66,10 @@ func TestApply(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if utf8.RuneCountInString(s) != o.baseLen {
+		if utf8.RuneCountInString(s) != o.BaseLen {
 			t.Fatal()
 		}
-		if utf8.RuneCountInString(result) != o.targetLen {
+		if utf8.RuneCountInString(result) != o.TargetLen {
 			t.Fatal()
 		}
 	}
@@ -95,7 +95,7 @@ func TestEmptyOps(t *testing.T) {
 	o.Retain(0)
 	o.Insert("")
 	o.Delete(0)
-	if len(o.ops) != 0 {
+	if len(o.Ops) != 0 {
 		t.Fatal()
 	}
 }
@@ -108,7 +108,7 @@ func TestCompose(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if a.targetLen != utf8.RuneCountInString(afterA) {
+		if a.TargetLen != utf8.RuneCountInString(afterA) {
 			t.Fatal()
 		}
 		b := genSequence(afterA)
@@ -116,14 +116,14 @@ func TestCompose(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if b.targetLen != utf8.RuneCountInString(afterB) {
+		if b.TargetLen != utf8.RuneCountInString(afterB) {
 			t.Fatal()
 		}
 		ab, err := a.Compose(b)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if ab.targetLen != b.targetLen {
+		if ab.TargetLen != b.TargetLen {
 			t.Fatal()
 		}
 		afterAB, err := ab.Apply(s)
@@ -159,49 +159,49 @@ func TestEq(t *testing.T) {
 
 func TestOpsMerging(t *testing.T) {
 	o := NewSequence()
-	if len(o.ops) != 0 {
+	if len(o.Ops) != 0 {
 		t.Fatal()
 	}
 	o.Retain(2)
-	if len(o.ops) != 1 {
+	if len(o.Ops) != 1 {
 		t.Fatal()
 	}
-	if !reflect.DeepEqual(o.ops[len(o.ops)-1], Retain{N: 2}) {
+	if !reflect.DeepEqual(o.Ops[len(o.Ops)-1], Retain{N: 2}) {
 		t.Fatal()
 	}
 	o.Retain(3)
-	if len(o.ops) != 1 {
+	if len(o.Ops) != 1 {
 		t.Fatal()
 	}
-	if !reflect.DeepEqual(o.ops[len(o.ops)-1], Retain{N: 5}) {
+	if !reflect.DeepEqual(o.Ops[len(o.Ops)-1], Retain{N: 5}) {
 		t.Fatal()
 	}
 	o.Insert("abc")
-	if len(o.ops) != 2 {
+	if len(o.Ops) != 2 {
 		t.Fatal()
 	}
-	if !reflect.DeepEqual(o.ops[len(o.ops)-1], Insert{Str: "abc"}) {
+	if !reflect.DeepEqual(o.Ops[len(o.Ops)-1], Insert{Str: "abc"}) {
 		t.Fatal()
 	}
 	o.Insert("xyz")
-	if len(o.ops) != 2 {
+	if len(o.Ops) != 2 {
 		t.Fatal()
 	}
-	if !reflect.DeepEqual(o.ops[len(o.ops)-1], Insert{Str: "abcxyz"}) {
-		t.Fatal()
-	}
-	o.Delete(1)
-	if len(o.ops) != 3 {
-		t.Fatal()
-	}
-	if !reflect.DeepEqual(o.ops[len(o.ops)-1], Delete{N: 1}) {
+	if !reflect.DeepEqual(o.Ops[len(o.Ops)-1], Insert{Str: "abcxyz"}) {
 		t.Fatal()
 	}
 	o.Delete(1)
-	if len(o.ops) != 3 {
+	if len(o.Ops) != 3 {
 		t.Fatal()
 	}
-	if !reflect.DeepEqual(o.ops[len(o.ops)-1], Delete{N: 2}) {
+	if !reflect.DeepEqual(o.Ops[len(o.Ops)-1], Delete{N: 1}) {
+		t.Fatal()
+	}
+	o.Delete(1)
+	if len(o.Ops) != 3 {
+		t.Fatal()
+	}
+	if !reflect.DeepEqual(o.Ops[len(o.Ops)-1], Delete{N: 2}) {
 		t.Fatal()
 	}
 }
@@ -246,10 +246,10 @@ func TestInvert(t *testing.T) {
 		s := genString(50)
 		o := genSequence(s)
 		p := o.Invert(s)
-		if o.baseLen != p.targetLen {
+		if o.BaseLen != p.TargetLen {
 			t.Fatal()
 		}
-		if o.targetLen != p.baseLen {
+		if o.TargetLen != p.BaseLen {
 			t.Fatal()
 		}
 		afterO, err := o.Apply(s)
