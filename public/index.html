@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>OT WebAssembly Test</title>
+    <script src="wasm_exec.js"></script>
+    <script>
+        const go = new Go();
+        function testOT() {
+                const log = document.getElementById('log');
+                const appendLog = (msg) => {
+                    console.log(msg);
+                    log.innerHTML += msg + '<br>';
+                };
+
+                try {
+                    // Create a new sequence
+                    const seq = NewSequence();
+                    appendLog('Created new sequence');
+
+                    // Test insert
+                    seq.insert('Hello ');
+                    appendLog('Inserted "Hello "');
+
+                    // Test retain
+                    seq.retain(5);
+                    appendLog('Retained 5 characters');
+
+                    // Test delete
+                    seq.delete(2);
+                    appendLog('Deleted 2 characters');
+
+                    // Test apply
+                    const result = seq.apply('World!!');
+                    appendLog(`Applied to "World!!": "${result}"`);
+
+                    // Test isNoop
+                    appendLog(`Is noop: ${seq.isNoop()}`);
+
+                    // Test compose
+                    const seq2 = NewSequence();
+                    seq2.insert('!!!');
+                    const composed = seq.compose(seq2);
+                    appendLog('Composed with sequence that inserts "!!!"');
+
+                    // Test transform
+                    const { aPrime, bPrime } = seq.transform(seq2);
+                    appendLog('Transformed sequences');
+
+                    // Test invert
+                    const inverse = seq.invert('World!!');
+                    appendLog('Created inverse sequence');
+
+                    appendLog('All tests completed successfully!');
+                } catch (error) {
+                    console.error(error);
+                    appendLog(`Error: ${error.message}`);
+                }
+            }
+            
+        WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then((result) => {
+            go.run(result.instance);
+            
+            // Test the OT operations
+            
+
+            // Run tests when page loads
+            window.onload = testOT;
+        }).catch((err) => {
+            console.error(err);
+        });
+    </script>
+    <style>
+        #log {
+            font-family: monospace;
+            white-space: pre-wrap;
+            padding: 1em;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            margin: 1em;
+        }
+    </style>
+</head>
+<body>
+    <h1>OT WebAssembly Test</h1>
+    <button onclick="testOT()">Run Tests</button>
+    <div id="log"></div>
+</body>
+</html> 
