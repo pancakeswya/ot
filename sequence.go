@@ -88,18 +88,18 @@ func (seq *Sequence) Apply(s string) (string, error) {
 	}
 
 	var result strings.Builder
+	var pos uint64 = 0
+
 	chars := []rune(s)
-	pos := 0
 
 	for _, op := range seq.Ops {
 		switch opVal := op.(type) {
 		case Retain:
-			for i := uint64(0); i < opVal.N; i++ {
-				result.WriteRune(chars[pos])
-				pos++
-			}
+			nextPos := pos + opVal.N
+			result.WriteString(string(chars[pos:nextPos]))
+			pos = nextPos
 		case Delete:
-			pos += int(opVal.N)
+			pos += opVal.N
 		case Insert:
 			result.WriteString(opVal.Str)
 		}
@@ -337,6 +337,31 @@ func (seq *Sequence) Invert(s string) *Sequence {
 	return inverse
 }
 
+func (seq *Sequence) TransformIndex(position uint32) uint32 {
+	index := int32(position)
+	newIndex := index
+	for _, op := range seq.Ops {
+		switch opVal := op.(type) {
+		case Retain:
+			index -= int32(opVal.N)
+		case Insert:
+			newIndex += int32(utf8.RuneCountInString(opVal.Str))
+		case Delete:
+			n := int32(opVal.N)
+			if index < n {
+				newIndex -= index
+			} else {
+				newIndex -= n
+			}
+			index += n
+		}
+		if index < 0 {
+			break
+		}
+	}
+	return uint32(newIndex)
+}
+
 func (seq *Sequence) MarshalJSON() ([]byte, error) {
 	var anyOps []interface{}
 	for _, op := range seq.Ops {
@@ -364,13 +389,15 @@ func (seq *Sequence) UnmarshalJSON(data []byte) error {
 		case int:
 			if val > 0 {
 				seq.Retain(uint64(val))
+			} else {
+				seq.Delete(uint64(-val))
 			}
-			seq.Delete(uint64(-val))
 		case float64:
 			if val > 0 {
 				seq.Retain(uint64(val))
+			} else {
+				seq.Delete(uint64(-val))
 			}
-			seq.Delete(uint64(-val))
 		case string:
 			seq.Insert(val)
 		default:
